@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>Buddy Trip Calculator</title>
+<style>
+:root{--bg:#f1f5f9;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--accent:#0f172a;--good:#166534;--warn:#92400e;--bad:#991b1b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:var(--accent);color:#fff;padding:22px 18px 26px;border-radius:0 0 24px 24px}h1{margin:0;font-size:25px}header p{margin:5px 0 0;color:#cbd5e1;font-size:13px}
+main{max-width:720px;margin:auto;padding:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px #00000008}
+label{display:block;font-size:13px;font-weight:700;margin:10px 0 6px}input,select,button{width:100%;font:inherit;border-radius:12px;padding:12px;border:1px solid #cbd5e1;background:#fff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+button{background:var(--accent);color:#fff;border:0;font-weight:750;cursor:pointer;margin-top:12px}.secondary{background:#e2e8f0;color:#0f172a}.danger{background:#fee2e2;color:#991b1b}
+.result{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#f8fafc;border-radius:14px;padding:12px}.metric small{display:block;color:var(--muted);font-size:11px}.metric strong{display:block;font-size:19px;margin-top:3px}.hero{background:#ecfdf5;border:1px solid #bbf7d0}.hero strong{font-size:28px;color:var(--good)}
+.note{font-size:12px;color:var(--muted);line-height:1.45}.route{display:flex;gap:8px;align-items:center}.route select{flex:1}.pill{font-size:11px;padding:5px 8px;border-radius:999px;background:#e2e8f0;color:#475569}
+h2{font-size:17px;margin:0 0 6px}.footer{text-align:center;color:var(--muted);font-size:11px;padding:10px 0 30px}
+@media(max-width:520px){.grid3{grid-template-columns:1fr 1fr}.result{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header><h1>🚗 Buddy Trip Calculator</h1><p>Ghana private-trip pricing for your LIVAN X3 Pro</p></header>
+<main>
+<section class="card">
+<h2>Trip</h2>
+<div class="route"><select id="preset" onchange="loadPreset()"><option value="">Choose a previous route…</option></select><span class="pill">Preset</span></div>
+<div class="grid">
+<div><label>Pickup</label><input id="pickup" placeholder="e.g. Kwabenya"></div>
+<div><label>Destination</label><input id="destination" placeholder="e.g. Somanya"></div>
+</div>
+<div class="grid3">
+<div><label>Distance (km)</label><input id="km" type="number" min="0" step="0.1" value="50"></div>
+<div><label>Waiting (hours)</label><input id="wait" type="number" min="0" step="0.5" value="0"></div>
+<div><label>Trip type</label><select id="type"><option value="one">One way</option><option value="round">Round trip</option></select></div>
+</div>
+</section>
+
+<section class="card">
+<h2>Your cost settings</h2>
+<div class="grid">
+<div><label>Petrol price (GH₵/L)</label><input id="fuel" type="number" step="0.01" value="0"></div>
+<div><label>Car economy (L/100 km)</label><input id="economy" type="number" step="0.1" value="7.5"></div>
+<div><label>Waiting charge (GH₵/hr)</label><input id="waitRate" type="number" step="1" value="30"></div>
+<div><label>Daily company/operating cost (GH₵)</label><input id="company" type="number" step="1" value="400"></div>
+</div>
+<p class="note">Enter the current Star Oil petrol price before calculating. The app saves your settings on this phone.</p>
+</section>
+
+<section class="card">
+<h2>Pricing target</h2>
+<div class="grid">
+<div><label>Desired profit (GH₵)</label><input id="profit" type="number" step="1" value="200"></div>
+<div><label>Safety buffer (%)</label><input id="buffer" type="number" step="1" value="10"></div>
+</div>
+<button onclick="calculate()">Calculate trip price</button>
+</section>
+
+<section class="card">
+<h2>Result</h2>
+<div class="result">
+<div class="metric"><small>Fuel needed</small><strong id="fuelL">—</strong></div>
+<div class="metric"><small>Fuel cost</small><strong id="fuelCost">—</strong></div>
+<div class="metric"><small>Waiting cost</small><strong id="waitCost">—</strong></div>
+<div class="metric"><small>Allocated company cost</small><strong id="companyCost">—</strong></div>
+</div>
+<div class="metric hero" style="margin-top:10px"><small>Recommended customer price</small><strong id="recommended">—</strong></div>
+<div class="result" style="margin-top:10px">
+<div class="metric"><small>Minimum price (before buffer)</small><strong id="minimum">—</strong></div>
+<div class="metric"><small>Expected profit at recommended</small><strong id="expected">—</strong></div>
+</div>
+<p id="explain" class="note"></p>
+</section>
+
+<section class="card">
+<h2>Previous routes</h2>
+<p class="note">These are quick presets from the routes we have discussed. Distances are intentionally editable because actual road distance can vary by pickup/drop-off point.</p>
+<select id="routeList" onchange="useRoute(this.value)"></select>
+</section>
+
+<section class="card">
+<h2>Save / reset</h2>
+<button class="secondary" onclick="saveSettings()">Save my settings</button>
+<button class="danger" onclick="resetApp()">Reset app</button>
+<p id="saved" class="note"></p>
+</section>
+<div class="footer">Buddy Trip Calculator • Offline-first • Built for personal use</div>
+</main>
+<script>
+const routes=[
+["Accra","Akropong","Accra → Akropong"],
+["Accra","Aburi","Accra → Aburi"],
+["Accra","Koforidua","Accra → Koforidua"],
+["Accra","Aflao","Accra → Aflao (round trip)"],
+["Kwabenya","Somanya","Kwabenya → Somanya"],
+["Kwabenya","Akosombo","Kwabenya → Akosombo"],
+["Circle","Dowenya","Circle → Dowenya/Dowanya"],
+["Osu","Akosombo","Osu → Akosombo"],
+["East Legon","Aburi → Independence Square","East Legon → Aburi → Independence Square"],
+["Madina","Mampong Tutu","Madina → Mampong / Mampong Tutu"],
+["Airport","Suhum","Airport → Suhum"],
+["Accra Mall","Aburi Ahwereso","Accra Mall → Aburi Ahwereso"],
+["Dzorwulu","Komenda","Dzorwulu → Komenda"],
+["Tantra","Dawhenya","Tantra → Dawhenya"],
+["Tantra","Community 25","Tantra → Community 25"],
+["Tantra","Suhum","Tantra → Suhum"],
+["UG Legon","Kasoa Millennium City","UG Legon → Kasoa Millennium City"],
+["Tse Addo","Akuse","Tse Addo → Akuse"],
+["Accra","Gomoa Dominasi","Accra → Gomoa Dominasi"],
+];
+const $=id=>document.getElementById(id);
+routes.forEach((r,i)=>{let o=document.createElement("option");o.value=i;o.textContent=r[2];$("preset").appendChild(o);let p=o.cloneNode(true);$("routeList").appendChild(p)});
+function loadPreset(){let i=$("preset").value;if(i==="")return;useRoute(i);$("routeList").value=i}
+function useRoute(i){if(i==="")return;let r=routes[i];$("pickup").value=r[0];$("destination").value=r[1];if(r[2].includes("round"))$("type").value="round";calculate(false)}
+function money(n){return "GH₵ "+Math.round(n).toLocaleString()}
+function calculate(showAlert=true){
+let km=+ $("km").value||0, wait=+$("wait").value||0, fuel=+$("fuel").value||0, econ=+$("economy").value||0;
+let waitRate=+$("waitRate").value||0, company=+$("company").value||0, profit=+$("profit").value||0, buffer=(+$("buffer").value||0)/100;
+let totalKm=$("type").value==="round"?km*2:km;
+let liters=totalKm*econ/100, fuelCost=liters*fuel, waitCost=wait*waitRate;
+let base=fuelCost+waitCost+company+profit, recommended=base*(1+buffer), expected=recommended-fuelCost-waitCost-company;
+$("fuelL").textContent=liters.toFixed(1)+" L";$("fuelCost").textContent=money(fuelCost);$("waitCost").textContent=money(waitCost);$("companyCost").textContent=money(company);
+$("minimum").textContent=money(base);$("recommended").textContent=money(recommended);$("expected").textContent=money(expected);
+$("explain").textContent=`Calculation uses ${totalKm.toFixed(1)} km total driving, your ${econ.toFixed(1)} L/100km economy, GH₵${fuel.toFixed(2)}/L fuel, waiting at GH₵${waitRate}/hr, GH₵${company} allocated company cost, and GH₵${profit} target profit.`;
+if(showAlert && !fuel) alert("Enter today's petrol price first.");
+}
+["km","wait","fuel","economy","waitRate","company","profit","buffer","type"].forEach(id=>$(id).addEventListener("input",()=>calculate(false)));
+function saveSettings(){let ids=["fuel","economy","waitRate","company","profit","buffer"];let x={};ids.forEach(id=>x[id]=$(id).value);localStorage.setItem("buddyTripSettings",JSON.stringify(x));$("saved").textContent="Settings saved on this device."}
+function restore(){try{let x=JSON.parse(localStorage.getItem("buddyTripSettings")||"{}");Object.keys(x).forEach(id=>{if($(id))$(id).value=x[id]})}catch(e){}calculate(false)}
+function resetApp(){if(confirm("Reset saved settings and clear this trip?")){localStorage.removeItem("buddyTripSettings");location.reload()}}
+restore();
+</script>
+</body>
+</html>
